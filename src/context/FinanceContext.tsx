@@ -105,7 +105,17 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (savedExpenses) setExpenses(JSON.parse(savedExpenses));
     if (savedBudgets) setBudgets(JSON.parse(savedBudgets));
     if (savedCategories) {
-      setCategories(JSON.parse(savedCategories));
+      try {
+        const parsedCategories = JSON.parse(savedCategories);
+        const hasIncome = parsedCategories.some((c: Category) => c.type === 'Income');
+        if (!hasIncome) {
+          setCategories([...parsedCategories, ...DEFAULT_CATEGORIES.filter(c => c.type === 'Income')]);
+        } else {
+          setCategories(parsedCategories);
+        }
+      } catch (e) {
+        setCategories(DEFAULT_CATEGORIES);
+      }
     } else {
       setCategories(DEFAULT_CATEGORIES);
     }

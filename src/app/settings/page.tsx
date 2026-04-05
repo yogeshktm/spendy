@@ -11,10 +11,11 @@ export default function SettingsPage() {
   
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [categoryForm, setCategoryForm] = useState({
+  const [categoryForm, setCategoryForm] = useState<{name: string, icon: string, color: string, type: 'Expense' | 'Income'}>({
     name: '',
     icon: 'Layers',
-    color: '#8b5cf6'
+    color: '#8b5cf6',
+    type: 'Expense'
   });
 
   const handleImportClick = () => {
@@ -38,16 +39,16 @@ export default function SettingsPage() {
     if (editingCategory) {
       updateCategory(editingCategory.id, categoryForm);
     } else {
-      addCategory({ ...categoryForm, type: 'Expense' });
+      addCategory({ ...categoryForm });
     }
     setIsCategoryModalOpen(false);
     setEditingCategory(null);
-    setCategoryForm({ name: '', icon: 'Layers', color: '#8b5cf6' });
+    setCategoryForm({ name: '', icon: 'Layers', color: '#8b5cf6', type: 'Expense' });
   };
 
   const openEditCategory = (cat: Category) => {
     setEditingCategory(cat);
-    setCategoryForm({ name: cat.name, icon: cat.icon, color: cat.color });
+    setCategoryForm({ name: cat.name, icon: cat.icon, color: cat.color, type: cat.type === 'Income' ? 'Income' : 'Expense' });
     setIsCategoryModalOpen(true);
   };
 
@@ -70,7 +71,7 @@ export default function SettingsPage() {
               <Layers size={18} /> Manage Categories
             </h2>
             <button 
-              onClick={() => { setEditingCategory(null); setCategoryForm({ name: '', icon: 'Layers', color: '#8b5cf6' }); setIsCategoryModalOpen(true); }}
+              onClick={() => { setEditingCategory(null); setCategoryForm({ name: '', icon: 'Layers', color: '#8b5cf6', type: 'Expense' }); setIsCategoryModalOpen(true); }}
               style={{ fontSize: '0.75rem', fontWeight: 600, color: 'hsl(var(--primary))', background: 'none', border: 'none', cursor: 'pointer' }}
             >
               + Add Category
@@ -78,7 +79,7 @@ export default function SettingsPage() {
           </div>
           
           <div className="glass" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.75rem', padding: '1rem' }}>
-            {categories.filter(c => c.type === 'Expense').map(cat => (
+            {categories.filter(c => c.type !== 'Internal').map(cat => (
               <div 
                 key={cat.id} 
                 className="category-chip"
@@ -96,9 +97,14 @@ export default function SettingsPage() {
                 <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: `${cat.color}20`, color: cat.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Layers size={16} /> 
                 </div>
-                <span style={{ fontSize: '0.875rem', fontWeight: 500, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {cat.name}
-                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {cat.name}
+                  </span>
+                  <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>
+                    {cat.type}
+                  </span>
+                </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button onClick={() => openEditCategory(cat)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', padding: 0 }}>
                     <Edit2 size={12} />
@@ -260,6 +266,22 @@ export default function SettingsPage() {
                   style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.75rem', borderRadius: '12px', color: 'white', outline: 'none' }}
                   placeholder="e.g. Gym"
                 />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.5rem', display: 'block' }}>Type</label>
+                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.25rem', borderRadius: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setCategoryForm({ ...categoryForm, type: 'Expense' })}
+                    style={{ flex: 1, padding: '0.5rem', borderRadius: '8px', background: categoryForm.type === 'Expense' ? 'rgba(239, 68, 68, 0.2)' : 'transparent', color: categoryForm.type === 'Expense' ? '#ef4444' : 'white', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                  >Expense</button>
+                  <button
+                    type="button"
+                    onClick={() => setCategoryForm({ ...categoryForm, type: 'Income' })}
+                    style={{ flex: 1, padding: '0.5rem', borderRadius: '8px', background: categoryForm.type === 'Income' ? 'rgba(34, 197, 94, 0.2)' : 'transparent', color: categoryForm.type === 'Income' ? '#22c55e' : 'white', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                  >Income</button>
+                </div>
               </div>
 
               <div>
