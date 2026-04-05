@@ -1,28 +1,31 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { Plus, Trash2, Edit2, X, PieChart } from 'lucide-react';
 
 export default function BudgetsPage() {
-  const { budgets, expenses, addBudget, deleteBudget, updateBudget } = useFinance();
+  const { budgets, expenses, categories, addBudget, deleteBudget, updateBudget } = useFinance();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<any>(null);
   
   const currentMonth = new Date().toISOString().slice(0, 7);
-  const categories = [
-    'Food & Dining', 'Housing & Rent', 'Transportation & Fuel', 
-    'Entertainment & Leisure', 'Shopping', 'Health & Fitness', 
-    'Utilities', 'Miscellaneous'
-  ];
+  const expenseCategories = categories.filter(c => c.type === 'Expense');
 
   const [formData, setFormData] = useState({
     name: '',
     amount: 0,
-    category: 'Food & Dining',
+    category: expenseCategories[0]?.name || 'Miscellaneous',
     month: currentMonth,
     description: '',
   });
+
+  // Update default category when categories change
+  useEffect(() => {
+    if (!formData.category && expenseCategories.length > 0) {
+      setFormData(prev => ({ ...prev, category: expenseCategories[0].name }));
+    }
+  }, [expenseCategories, formData.category]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +36,7 @@ export default function BudgetsPage() {
     }
     setIsModalOpen(false);
     setEditingBudget(null);
-    setFormData({ name: '', amount: 0, category: 'Food & Dining', month: currentMonth, description: '' });
+    setFormData({ name: '', amount: 0, category: expenseCategories[0]?.name || 'Miscellaneous', month: currentMonth, description: '' });
   };
 
   const openEditModal = (bud: any) => {
@@ -58,13 +61,17 @@ export default function BudgetsPage() {
             .filter(e => e.category === bud.category && e.date.startsWith(bud.month))
             .reduce((acc, curr) => acc + curr.amount, 0);
           const progress = Math.min(100, (spentInCategory / bud.amount) * 100);
+          const categoryObj = categories.find(c => c.name === bud.category);
 
           return (
             <div key={bud.id} className="glass-card" style={{ padding: '1.25rem' }}>
               <div className="flex-between" style={{ marginBottom: '0.75rem' }}>
                 <div>
                   <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>{bud.name}</h3>
-                  <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>{bud.category} • {bud.month}</p>
+                  <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
+                    <span style={{ color: categoryObj?.color || 'inherit' }}>● </span>
+                    {bud.category} • {bud.month}
+                  </p>
                 </div>
                 <p style={{ fontWeight: 700 }}>₹{bud.amount.toLocaleString()}</p>
               </div>
@@ -73,7 +80,7 @@ export default function BudgetsPage() {
               <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', marginBottom: '0.75rem', overflow: 'hidden' }}>
                 <div style={{ 
                   height: '100%', width: `${progress}%`, 
-                  background: progress > 90 ? '#ef4444' : 'hsl(var(--primary))',
+                  background: progress > 90 ? '#ef4444' : (categoryObj?.color || 'hsl(var(--primary))'),
                   borderRadius: '3px'
                 }} />
               </div>
@@ -148,7 +155,7 @@ export default function BudgetsPage() {
                     onChange={e => setFormData({ ...formData, category: e.target.value })}
                     style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.75rem', borderRadius: '12px', color: 'white', outline: 'none' }}
                   >
-                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    {expenseCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>

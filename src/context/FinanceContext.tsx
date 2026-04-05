@@ -2,6 +2,14 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
+export interface Category {
+  id: string;
+  name: string;
+  type: 'Expense' | 'Income' | 'Internal'; // Internal for transfers
+  icon: string;
+  color: string;
+}
+
 export interface Account {
   id: string;
   name: string;
@@ -22,6 +30,7 @@ export interface Expense {
   description: string;
   accountId: string;
   status: 'Cleared' | 'Pending';
+  type: 'Expense' | 'Transfer Out' | 'Transfer In';
   createdAt: string;
 }
 
@@ -40,15 +49,20 @@ interface FinanceContextType {
   accounts: Account[];
   expenses: Expense[];
   budgets: Budget[];
+  categories: Category[];
   addAccount: (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'currency'>) => void;
   updateAccount: (id: string, updates: Partial<Account>) => void;
   deleteAccount: (id: string) => void;
-  addExpense: (expense: Omit<Expense, 'id' | 'createdAt' | 'status'>) => void;
+  addExpense: (expense: Omit<Expense, 'id' | 'createdAt' | 'status' | 'type'>) => void;
   updateExpense: (id: string, updates: Partial<Expense>) => void;
   deleteExpense: (id: string) => void;
   addBudget: (budget: Omit<Budget, 'id' | 'createdAt' | 'status'>) => void;
   updateBudget: (id: string, updates: Partial<Budget>) => void;
   deleteBudget: (id: string) => void;
+  addCategory: (category: Omit<Category, 'id'>) => void;
+  updateCategory: (id: string, updates: Partial<Category>) => void;
+  deleteCategory: (id: string) => void;
+  transferAmount: (fromId: string, toId: string, amount: number, description?: string) => void;
   exportData: () => void;
   importData: (jsonData: string) => void;
   clearAllData: () => void;
@@ -59,10 +73,22 @@ interface FinanceContextType {
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
+const DEFAULT_CATEGORIES: Category[] = [
+  { id: '1', name: 'Food & Dining', type: 'Expense', icon: 'Utensils', color: '#ef4444' },
+  { id: '2', name: 'Housing & Rent', type: 'Expense', icon: 'Home', color: '#3b82f6' },
+  { id: '3', name: 'Transportation', type: 'Expense', icon: 'Car', color: '#10b981' },
+  { id: '4', name: 'Entertainment', type: 'Expense', icon: 'Tv', color: '#8b5cf6' },
+  { id: '5', name: 'Shopping', type: 'Expense', icon: 'ShoppingBag', color: '#f59e0b' },
+  { id: '6', name: 'Health', type: 'Expense', icon: 'Activity', color: '#ec4899' },
+  { id: '7', name: 'Utilities', type: 'Expense', icon: 'Zap', color: '#6366f1' },
+  { id: '8', name: 'Miscellaneous', type: 'Expense', icon: 'Layers', color: '#94a3b8' },
+];
+
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
   const [initialized, setInitialized] = useState(false);
 
   // Load from localStorage on mount
@@ -70,10 +96,16 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const savedAccounts = localStorage.getItem('spendy_accounts');
     const savedExpenses = localStorage.getItem('spendy_expenses');
     const savedBudgets = localStorage.getItem('spendy_budgets');
+    const savedCategories = localStorage.getItem('spendy_categories');
 
     if (savedAccounts) setAccounts(JSON.parse(savedAccounts));
     if (savedExpenses) setExpenses(JSON.parse(savedExpenses));
     if (savedBudgets) setBudgets(JSON.parse(savedBudgets));
+    if (savedCategories) {
+      setCategories(JSON.parse(savedCategories));
+    } else {
+      setCategories(DEFAULT_CATEGORIES);
+    }
     
     setInitialized(true);
   }, []);
@@ -84,8 +116,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('spendy_accounts', JSON.stringify(accounts));
       localStorage.setItem('spendy_expenses', JSON.stringify(expenses));
       localStorage.setItem('spendy_budgets', JSON.stringify(budgets));
+      localStorage.setItem('spendy_categories', JSON.stringify(categories));
     }
-  }, [accounts, expenses, budgets, initialized]);
+  }, [accounts, expenses, budgets, categories, initialized]);
 
   const addAccount = (acc: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'currency'>) => {
     const newAcc: Account = {
@@ -99,23 +132,24 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateAccount = (id: string, updates: Partial<Account>) => {
-    setAccounts(accounts.map(acc => 
+    setAccounts(prev => prev.map(acc => 
       acc.id === id ? { ...acc, ...updates, updatedAt: new Date().toISOString() } : acc
     ));
   };
 
   const deleteAccount = (id: string) => {
-    setAccounts(accounts.filter(acc => acc.id !== id));
+    setAccounts(prev => prev.filter(acc => acc.id !== id));
   };
 
-  const addExpense = (exp: Omit<Expense, 'id' | 'createdAt' | 'status'>) => {
+  const addExpense = (exp: Omit<Expense, 'id' | 'createdAt' | 'status' | 'type'>) => {
     const newExp: Expense = {
       ...exp,
       id: crypto.randomUUID(),
       status: 'Cleared',
+      type: 'Expense',
       createdAt: new Date().toISOString(),
     };
-    setExpenses([...expenses, newExp]);
+    setExpenses(prev => [...prev, newExp]);
 
     // Update account balance
     const account = accounts.find(a => a.id === exp.accountId);
@@ -125,7 +159,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateExpense = (id: string, updates: Partial<Expense>) => {
-    setExpenses(expenses.map(exp => exp.id === id ? { ...exp, ...updates } : exp));
+    setExpenses(prev => prev.map(exp => exp.id === id ? { ...exp, ...updates } : exp));
   };
 
   const deleteExpense = (id: string) => {
@@ -136,7 +170,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         updateAccount(account.id, { balance: account.balance + exp.amount });
       }
     }
-    setExpenses(expenses.filter(exp => exp.id !== id));
+    setExpenses(prev => prev.filter(exp => exp.id !== id));
   };
 
   const addBudget = (bud: Omit<Budget, 'id' | 'createdAt' | 'status'>) => {
@@ -146,15 +180,74 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       status: 'Active',
       createdAt: new Date().toISOString(),
     };
-    setBudgets([...budgets, newBud]);
+    setBudgets(prev => [...prev, newBud]);
   };
 
   const updateBudget = (id: string, updates: Partial<Budget>) => {
-    setBudgets(budgets.map(bud => bud.id === id ? { ...bud, ...updates } : bud));
+    setBudgets(prev => prev.map(bud => bud.id === id ? { ...bud, ...updates } : bud));
   };
 
   const deleteBudget = (id: string) => {
-    setBudgets(budgets.filter(bud => bud.id !== id));
+    setBudgets(prev => prev.filter(bud => bud.id !== id));
+  };
+
+  const addCategory = (cat: Omit<Category, 'id'>) => {
+    const newCat: Category = { ...cat, id: crypto.randomUUID() };
+    setCategories(prev => [...prev, newCat]);
+  };
+
+  const updateCategory = (id: string, updates: Partial<Category>) => {
+    setCategories(prev => prev.map(cat => cat.id === id ? { ...cat, ...updates } : cat));
+  };
+
+  const deleteCategory = (id: string) => {
+    setCategories(prev => prev.filter(cat => cat.id !== id));
+  };
+
+  const transferAmount = (fromId: string, toId: string, amount: number, description: string = 'Account Transfer') => {
+    const fromAccount = accounts.find(a => a.id === fromId);
+    const toAccount = accounts.find(a => a.id === toId);
+
+    if (!fromAccount || !toAccount) return;
+
+    const date = new Date().toISOString().split('T')[0];
+    const timestamp = new Date().toISOString();
+
+    // Create records for history
+    const outRecord: Expense = {
+      id: crypto.randomUUID(),
+      name: `Transfer to ${toAccount.name}`,
+      amount: amount,
+      category: 'Internal',
+      date,
+      description,
+      accountId: fromId,
+      status: 'Cleared',
+      type: 'Transfer Out',
+      createdAt: timestamp,
+    };
+
+    const inRecord: Expense = {
+      id: crypto.randomUUID(),
+      name: `Transfer from ${fromAccount.name}`,
+      amount: amount,
+      category: 'Internal',
+      date,
+      description,
+      accountId: toId,
+      status: 'Cleared',
+      type: 'Transfer In',
+      createdAt: timestamp,
+    };
+
+    setExpenses(prev => [...prev, outRecord, inRecord]);
+
+    // Update balances
+    setAccounts(prev => prev.map(acc => {
+      if (acc.id === fromId) return { ...acc, balance: acc.balance - amount, updatedAt: timestamp };
+      if (acc.id === toId) return { ...acc, balance: acc.balance + amount, updatedAt: timestamp };
+      return acc;
+    }));
   };
 
   const exportData = () => {
@@ -162,8 +255,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       accounts,
       expenses,
       budgets,
+      categories,
       exportedAt: new Date().toISOString(),
-      version: '1.0'
+      version: '1.1'
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -181,6 +275,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       if (data.accounts) setAccounts(data.accounts);
       if (data.expenses) setExpenses(data.expenses);
       if (data.budgets) setBudgets(data.budgets);
+      if (data.categories) setCategories(data.categories);
       alert('Data imported successfully!');
     } catch (e) {
       alert('Failed to import data. Please ensure the file is a valid SpendY backup.');
@@ -192,9 +287,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       setAccounts([]);
       setExpenses([]);
       setBudgets([]);
+      setCategories(DEFAULT_CATEGORIES);
       localStorage.removeItem('spendy_accounts');
       localStorage.removeItem('spendy_expenses');
       localStorage.removeItem('spendy_budgets');
+      localStorage.removeItem('spendy_categories');
     }
   };
 
@@ -202,7 +299,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   
   const currentMonth = new Date().toISOString().slice(0, 7);
   const monthlySpend = expenses
-    .filter(e => e.date.startsWith(currentMonth))
+    .filter(e => e.date.startsWith(currentMonth) && e.type === 'Expense')
     .reduce((acc, curr) => acc + curr.amount, 0);
     
   const monthlyBudget = budgets
@@ -211,10 +308,12 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <FinanceContext.Provider value={{
-      accounts, expenses, budgets,
+      accounts, expenses, budgets, categories,
       addAccount, updateAccount, deleteAccount,
       addExpense, updateExpense, deleteExpense,
       addBudget, updateBudget, deleteBudget,
+      addCategory, updateCategory, deleteCategory,
+      transferAmount,
       exportData, importData, clearAllData,
       totalBalance, monthlySpend, monthlyBudget
     }}>

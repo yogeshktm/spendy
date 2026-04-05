@@ -1,13 +1,21 @@
 'use client';
 
-import React, { useRef } from 'react';
-import { useFinance } from '@/context/FinanceContext';
-import { Download, Upload, Trash2, Shield, Info, ArrowLeft } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { useFinance, Category } from '@/context/FinanceContext';
+import { Download, Upload, Trash2, Shield, Info, ArrowLeft, Layers, X, Edit2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SettingsPage() {
-  const { exportData, importData, clearAllData } = useFinance();
+  const { exportData, importData, clearAllData, categories, addCategory, updateCategory, deleteCategory } = useFinance();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    icon: 'Layers',
+    color: '#8b5cf6'
+  });
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -25,6 +33,24 @@ export default function SettingsPage() {
     }
   };
 
+  const handleCategorySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingCategory) {
+      updateCategory(editingCategory.id, categoryForm);
+    } else {
+      addCategory({ ...categoryForm, type: 'Expense' });
+    }
+    setIsCategoryModalOpen(false);
+    setEditingCategory(null);
+    setCategoryForm({ name: '', icon: 'Layers', color: '#8b5cf6' });
+  };
+
+  const openEditCategory = (cat: Category) => {
+    setEditingCategory(cat);
+    setCategoryForm({ name: cat.name, icon: cat.icon, color: cat.color });
+    setIsCategoryModalOpen(true);
+  };
+
   return (
     <main className="container" style={{ paddingBottom: '5rem' }}>
       <header className="flex-between" style={{ marginBottom: '2rem' }}>
@@ -37,6 +63,55 @@ export default function SettingsPage() {
       </header>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {/* Categories Section */}
+        <section>
+          <div className="flex-between" style={{ marginBottom: '1rem' }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Layers size={18} /> Manage Categories
+            </h2>
+            <button 
+              onClick={() => { setEditingCategory(null); setCategoryForm({ name: '', icon: 'Layers', color: '#8b5cf6' }); setIsCategoryModalOpen(true); }}
+              style={{ fontSize: '0.75rem', fontWeight: 600, color: 'hsl(var(--primary))', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              + Add Category
+            </button>
+          </div>
+          
+          <div className="glass" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.75rem', padding: '1rem' }}>
+            {categories.filter(c => c.type === 'Expense').map(cat => (
+              <div 
+                key={cat.id} 
+                className="category-chip"
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.75rem', 
+                  padding: '0.75rem', 
+                  borderRadius: '12px', 
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  position: 'relative'
+                }}
+              >
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: `${cat.color}20`, color: cat.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Layers size={16} /> 
+                </div>
+                <span style={{ fontSize: '0.875rem', fontWeight: 500, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {cat.name}
+                </span>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button onClick={() => openEditCategory(cat)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', padding: 0 }}>
+                    <Edit2 size={12} />
+                  </button>
+                  <button onClick={() => deleteCategory(cat.id)} style={{ background: 'none', border: 'none', color: 'rgba(239, 68, 68, 0.3)', cursor: 'pointer', padding: 0 }}>
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Data Management Section */}
         <section>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem', color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -155,7 +230,7 @@ export default function SettingsPage() {
               S
             </div>
             <h3 style={{ fontWeight: 700, marginBottom: '0.25rem' }}>SpendY PWA</h3>
-            <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)', marginBottom: '1rem' }}>Version 1.0.0</p>
+            <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)', marginBottom: '1rem' }}>Version 1.1.0</p>
             <p style={{ fontSize: '0.875rem', lineHeight: 1.6 }}>
               A premium personal finance tracker designed for speed and privacy.
               Your data stays on your device.
@@ -163,6 +238,53 @@ export default function SettingsPage() {
           </div>
         </section>
       </div>
+
+      {/* Category Modal */}
+      {isCategoryModalOpen && (
+        <div style={{ 
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', 
+          zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+        }}>
+          <div className="glass" style={{ width: '100%', maxWidth: '400px', padding: '2rem' }}>
+            <div className="flex-between" style={{ marginBottom: '2rem' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{editingCategory ? 'Edit Category' : 'Add Category'}</h2>
+              <button onClick={() => setIsCategoryModalOpen(false)} style={{ color: 'rgba(255,255,255,0.5)' }}><X size={24} /></button>
+            </div>
+            
+            <form onSubmit={handleCategorySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div>
+                <label style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.5rem', display: 'block' }}>Category Name</label>
+                <input 
+                  type="text" required value={categoryForm.name}
+                  onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.75rem', borderRadius: '12px', color: 'white', outline: 'none' }}
+                  placeholder="e.g. Gym"
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.5rem', display: 'block' }}>Color</label>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  {['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#6366f1', '#94a3b8'].map(color => (
+                    <button 
+                      key={color}
+                      type="button"
+                      onClick={() => setCategoryForm({ ...categoryForm, color })}
+                      style={{ 
+                        width: '32px', height: '32px', borderRadius: '50%', background: color, border: categoryForm.color === color ? '2px solid white' : 'none', cursor: 'pointer'
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <button type="submit" className="btn-primary" style={{ marginTop: '1rem', width: '100%' }}>
+                {editingCategory ? 'Update Category' : 'Save Category'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         .settings-item:hover {

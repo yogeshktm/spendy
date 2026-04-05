@@ -1,29 +1,32 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { Plus, Trash2, Edit2, X, Search, Filter } from 'lucide-react';
 
 export default function ExpensesPage() {
-  const { expenses, accounts, addExpense, deleteExpense, updateExpense } = useFinance();
+  const { expenses, accounts, categories, addExpense, deleteExpense, updateExpense } = useFinance();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
+  const expenseCategories = categories.filter(c => c.type === 'Expense');
+
   const [formData, setFormData] = useState({
     name: '',
     amount: 0,
-    category: 'Food & Dining',
+    category: expenseCategories[0]?.name || 'Miscellaneous',
     date: new Date().toISOString().split('T')[0],
     description: '',
     accountId: accounts[0]?.id || '',
   });
 
-  const categories = [
-    'Food & Dining', 'Housing & Rent', 'Transportation & Fuel', 
-    'Entertainment & Leisure', 'Shopping', 'Health & Fitness', 
-    'Utilities', 'Miscellaneous'
-  ];
+  // Update default category when categories change if not already set
+  useEffect(() => {
+    if (!formData.category && expenseCategories.length > 0) {
+      setFormData(prev => ({ ...prev, category: expenseCategories[0].name }));
+    }
+  }, [expenseCategories, formData.category]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +38,7 @@ export default function ExpensesPage() {
     setIsModalOpen(false);
     setEditingExpense(null);
     setFormData({ 
-      name: '', amount: 0, category: 'Food & Dining', 
+      name: '', amount: 0, category: expenseCategories[0]?.name || 'Miscellaneous', 
       date: new Date().toISOString().split('T')[0], description: '',
       accountId: accounts[0]?.id || ''
     });
@@ -73,20 +76,30 @@ export default function ExpensesPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {filteredExpenses.map(exp => {
           const account = accounts.find(a => a.id === exp.accountId);
+          const categoryObj = categories.find(c => c.name === exp.category);
           return (
             <div key={exp.id} className="glass" style={{ padding: '1rem' }}>
               <div className="flex-between" style={{ marginBottom: '0.25rem' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>{exp.name}</h3>
-                <p className="text-danger" style={{ fontWeight: 700 }}>-₹{exp.amount}</p>
+                <p className={exp.type === 'Transfer In' ? 'text-success' : 'text-danger'} style={{ fontWeight: 700 }}>
+                  {exp.type === 'Transfer In' ? '+' : '-'}₹{exp.amount}
+                </p>
               </div>
               <div className="flex-between">
                 <div>
-                  <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>{exp.category} • {exp.date}</p>
+                  <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
+                    <span style={{ color: categoryObj?.color || 'inherit' }}>● </span>
+                    {exp.category} • {exp.date}
+                  </p>
                   <p style={{ fontSize: '0.65rem', color: 'hsl(var(--primary))' }}>{account?.name || 'Unknown Account'}</p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button onClick={() => openEditModal(exp)} style={{ color: 'rgba(255,255,255,0.3)' }}><Edit2 size={14} /></button>
-                  <button onClick={() => deleteExpense(exp.id)} style={{ color: 'rgba(239, 68, 68, 0.5)' }}><Trash2 size={14} /></button>
+                  {exp.category !== 'Internal' && (
+                    <>
+                      <button onClick={() => openEditModal(exp)} style={{ color: 'rgba(255,255,255,0.3)' }}><Edit2 size={14} /></button>
+                      <button onClick={() => deleteExpense(exp.id)} style={{ color: 'rgba(239, 68, 68, 0.5)' }}><Trash2 size={14} /></button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -143,7 +156,7 @@ export default function ExpensesPage() {
                     onChange={e => setFormData({ ...formData, category: e.target.value })}
                     style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.75rem', borderRadius: '12px', color: 'white', outline: 'none' }}
                   >
-                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    {expenseCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
