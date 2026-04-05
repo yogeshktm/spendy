@@ -7,7 +7,7 @@ import { LayoutDashboard, Wallet, CreditCard, PieChart, Settings } from 'lucide-
 const navItems = [
   { href: '/', label: 'Home', icon: LayoutDashboard },
   { href: '/accounts', label: 'Accounts', icon: Wallet },
-  { href: '/expenses', label: 'Expenses', icon: CreditCard },
+  { href: '/expenses', label: 'Transactions', icon: CreditCard },
   { href: '/budgets', label: 'Budgets', icon: PieChart },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];

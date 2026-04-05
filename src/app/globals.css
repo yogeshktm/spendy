@@ -117,3 +117,10 @@ button {
 .btn-primary:active {
   transform: scale(0.95);
 }
+
+/* Fix for native select options in dark mode */
+select option {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+

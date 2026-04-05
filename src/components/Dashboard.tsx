@@ -117,18 +117,23 @@ export default function Dashboard() {
 
       {/* Recent Activity */}
       <section>
-        <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>Recent Expenses</h3>
+        <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>Recent Transactions</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {expenses.slice(-3).reverse().map(exp => (
-            <div key={exp.id} className="glass" style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <p style={{ fontWeight: 600 }}>{exp.name}</p>
-                <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>{exp.category}</p>
+          {expenses.slice(-3).reverse().map(exp => {
+            const isPositive = ['Transfer In', 'Income'].includes(exp.type);
+            return (
+              <div key={exp.id} className="glass" style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ fontWeight: 600 }}>{exp.name}</p>
+                  <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>{exp.category}</p>
+                </div>
+                <p style={{ fontWeight: 700, color: isPositive ? '#22c55e' : '#ef4444' }}>
+                  {isPositive ? '+' : '-'}₹{exp.amount}
+                </p>
               </div>
-              <p className="text-danger" style={{ fontWeight: 700 }}>-₹{exp.amount}</p>
-            </div>
-          ))}
-          {expenses.length === 0 && <p className="text-muted" style={{ textAlign: 'center', padding: '1rem' }}>No expenses logged yet.</p>}
+            );
+          })}
+          {expenses.length === 0 && <p className="text-muted" style={{ textAlign: 'center', padding: '1rem' }}>No transactions logged yet.</p>}
         </div>
       </section>
     </div>

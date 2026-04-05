@@ -30,7 +30,7 @@ export interface Expense {
   description: string;
   accountId: string;
   status: 'Cleared' | 'Pending';
-  type: 'Expense' | 'Transfer Out' | 'Transfer In';
+  type: 'Expense' | 'Income' | 'Transfer Out' | 'Transfer In';
   createdAt: string;
 }
 
@@ -53,7 +53,7 @@ interface FinanceContextType {
   addAccount: (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'currency'>) => void;
   updateAccount: (id: string, updates: Partial<Account>) => void;
   deleteAccount: (id: string) => void;
-  addExpense: (expense: Omit<Expense, 'id' | 'createdAt' | 'status' | 'type'>) => void;
+  addExpense: (expense: Omit<Expense, 'id' | 'createdAt' | 'status'>) => void;
   updateExpense: (id: string, updates: Partial<Expense>) => void;
   deleteExpense: (id: string) => void;
   addBudget: (budget: Omit<Budget, 'id' | 'createdAt' | 'status'>) => void;
@@ -82,6 +82,9 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: '6', name: 'Health', type: 'Expense', icon: 'Activity', color: '#ec4899' },
   { id: '7', name: 'Utilities', type: 'Expense', icon: 'Zap', color: '#6366f1' },
   { id: '8', name: 'Miscellaneous', type: 'Expense', icon: 'Layers', color: '#94a3b8' },
+  { id: '9', name: 'Salary', type: 'Income', icon: 'Briefcase', color: '#22c55e' },
+  { id: '10', name: 'Interest', type: 'Income', icon: 'TrendingUp', color: '#22c55e' },
+  { id: '11', name: 'Other Income', type: 'Income', icon: 'PlusCircle', color: '#22c55e' },
 ];
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
@@ -141,12 +144,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     setAccounts(prev => prev.filter(acc => acc.id !== id));
   };
 
-  const addExpense = (exp: Omit<Expense, 'id' | 'createdAt' | 'status' | 'type'>) => {
+  const addExpense = (exp: Omit<Expense, 'id' | 'createdAt' | 'status'>) => {
     const newExp: Expense = {
       ...exp,
       id: crypto.randomUUID(),
       status: 'Cleared',
-      type: 'Expense',
       createdAt: new Date().toISOString(),
     };
     setExpenses(prev => [...prev, newExp]);
@@ -154,7 +156,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     // Update account balance
     const account = accounts.find(a => a.id === exp.accountId);
     if (account) {
-      updateAccount(account.id, { balance: account.balance - exp.amount });
+      if (exp.type === 'Income') {
+        updateAccount(account.id, { balance: account.balance + exp.amount });
+      } else if (exp.type === 'Expense') {
+        updateAccount(account.id, { balance: account.balance - exp.amount });
+      }
     }
   };
 
@@ -167,7 +173,15 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (exp) {
       const account = accounts.find(a => a.id === exp.accountId);
       if (account) {
-        updateAccount(account.id, { balance: account.balance + exp.amount });
+        if (exp.type === 'Income') {
+          updateAccount(account.id, { balance: account.balance - exp.amount });
+        } else if (exp.type === 'Expense') {
+          updateAccount(account.id, { balance: account.balance + exp.amount });
+        } else if (exp.type === 'Transfer Out') {
+          updateAccount(account.id, { balance: account.balance + exp.amount });
+        } else if (exp.type === 'Transfer In') {
+          updateAccount(account.id, { balance: account.balance - exp.amount });
+        }
       }
     }
     setExpenses(prev => prev.filter(exp => exp.id !== id));
